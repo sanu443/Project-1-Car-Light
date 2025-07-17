@@ -33,11 +33,6 @@
 #define D6 13
 #define D7 A4
 
-
-typedef unsigned long long u64;
-typedef unsigned char u8;
-typedef u8 bool_;
-
 void setup(void)
 {
     pinMode(LEFT_BTN_PIN, INPUT);
@@ -80,16 +75,16 @@ typedef enum
     OFF,
 } light_mode;
 
-u8 
-detect_press(u8 btn)
+unsigned char 
+detect_press(unsigned char btn)
 {   
-    static u32 ts_prev[3] = {0};
-    static u8 state_prev[3] = {0};
-    const u8 DEBOUNCE_DELAY = 20; //CHANGE IMMEDIATELY   
-    u8 result_press = 0;
+    static unsigned long ts_prev[3] = {0};
+    static unsigned char state_prev[3] = {0};
+    const unsigned char DEBOUNCE_DELAY = 20; //CHANGE IMMEDIATELY   
+    unsigned char result_press = 0;
     if (millis() - ts_prev[btn] >= DEBOUNCE_DELAY)
     {
-        u8 state_now = PIND;
+        unsigned char state_now = PIND;
         result_press = ~state_prev[btn] & state_now & 0b111;
         state_prev[btn] = state_now;
         ts_prev[btn] = millis();
@@ -98,16 +93,16 @@ detect_press(u8 btn)
 }
 
 
-u8 
-detect_release(u8 btn)
+unsigned char 
+detect_release(unsigned char btn)
 {   
-    static u32 ts_prev[3] = {0};
-    static u8 state_prev[3] = {0};
-    const u8 DEBOUNCE_DELAY = 20; //CHANGE IMMEDIATELY   
-    u8 result_release = 0;
+    static unsigned long ts_prev[3] = {0};
+    static unsigned char state_prev[3] = {0};
+    const unsigned char DEBOUNCE_DELAY = 20; //CHANGE IMMEDIATELY   
+    unsigned char result_release = 0;
     if (millis() - ts_prev[btn] >= DEBOUNCE_DELAY)
     {
-        u8 state_now = PIND;
+        unsigned char state_now = PIND;
         result_release = state_prev[btn] & ~state_now & 0b111;
         state_prev[btn] = state_now;
         ts_prev[btn] = millis();
@@ -115,17 +110,17 @@ detect_release(u8 btn)
     return (result_release >> btn) & 1;
 }
 
-// u8  
+// unsigned char  
 // buttons_status(btn_test mode)
 // {  
-//     static u32 ts_prev = 0;
-//     static u8 state_prev = 0;
-//     const u8 DEBOUNCE_DELAY = 0; //CHANGE IMMEDIATELY   
-//     u8 result_press = 0;
-//     u8 result_release = 0;
+//     static unsigned long ts_prev = 0;
+//     static unsigned char state_prev = 0;
+//     const unsigned char DEBOUNCE_DELAY = 0; //CHANGE IMMEDIATELY   
+//     unsigned char result_press = 0;
+//     unsigned char result_release = 0;
 //     if (millis() - ts_prev >= DEBOUNCE_DELAY)
 //     {
-//         u8 state_now = PIND;
+//         unsigned char state_now = PIND;
 //         result_press = ~state_prev & state_now & 0b111;
 //         result_release = state_prev & ~state_now & 0b111;
 //         state_prev = state_now;
@@ -134,8 +129,8 @@ detect_release(u8 btn)
 //     return (mode == TEST_RELEASE) ?  result_release : result_press;
 // }
 
-bool_
-btn_status(u8 btn, btn_test mode) 
+unsigned char
+btn_status(unsigned char btn, btn_test mode) 
 {      
     return (mode == TEST_PRESS) ? detect_press(btn) : detect_release(btn);
 }
@@ -191,8 +186,8 @@ main_task(void);
 void 
 loop(void)
 {   
-    static u32 ts_prev_main_task = 0;
-    const u8 HOW_OFTEN_RUN_MAIN_LOOP = 10;
+    static unsigned long ts_prev_main_task = 0;
+    const unsigned char HOW_OFTEN_RUN_MAIN_LOOP = 10;
     if (millis() - ts_prev_main_task >= HOW_OFTEN_RUN_MAIN_LOOP)
     {
         main_task();
@@ -204,24 +199,24 @@ void
 main_task(void)
 {
     static LiquidCrystal lcd(RS, EN, D4, D5, D6, D7);
-    static u8 init_lcd = 0;
+    static unsigned char init_lcd = 0;
     if (!init_lcd) 
     {   
         init_lcd = 1;
         lcd.begin(16, 2);
     }
-    static u32 last_press[3] = {0};
-    static u32 last_release[3] = {0};
+    static unsigned long last_press[3] = {0};
+    static unsigned long last_release[3] = {0};
     static btn_state left_btn = NOT_PRESSED;
     static btn_state right_btn = NOT_PRESSED;
     static btn_state hazard_btn = NOT_PRESSED;
     static light_mode mode = OFF;
     static light_mode last_mode = OFF;
-    static u8 cycles_left = 0;
-    static u8 cycles_right = 0;
-    static u8 count_left = 0;
-    static u8 count_right = 0;
-    //bool_ can_verride = TRUE;
+    static unsigned char cycles_left = 0;
+    static unsigned char cycles_right = 0;
+    static unsigned char count_left = 0;
+    static unsigned char count_right = 0;
+    //unsigned char can_verride = TRUE;
 
     print(&lcd, mode, left_btn, right_btn, hazard_btn);
 
@@ -329,7 +324,7 @@ main_task(void)
 
     switch (hazard_btn) 
     {   
-        static u32 ts_prev = 0;
+        static unsigned long ts_prev = 0;
         case NOT_PRESSED:
         {
             if (btn_status(HAZARD_BTN, TEST_PRESS))
@@ -370,7 +365,7 @@ main_task(void)
         case LANE_CHANGE_LEFT:
         {   
             digitalWrite(10, HIGH);
-            static u32 ts_prev = 0;
+            static unsigned long ts_prev = 0;
             if (millis() - ts_prev >= 100)
             {
                 if (cycles_left < 3)
@@ -401,10 +396,10 @@ main_task(void)
         case NORMAL_LEFT:
         {          
             
-            static u32 ts_prev = 0;
-            u16 adc_result = analogRead(POTENTIOMETER);
-            u16 frequency = 1UL + (10UL - 1UL) * (adc_result * 1UL) / (MAX_ANALOG * 1UL);
-            u16 period = 1000 / 2 / frequency;
+            static unsigned long ts_prev = 0;
+            unsigned int adc_result = analogRead(POTENTIOMETER);
+            unsigned int frequency = 1UL + (10UL - 1UL) * (adc_result * 1UL) / (MAX_ANALOG * 1UL);
+            unsigned int period = 1000 / 2 / frequency;
             if (millis() - ts_prev >= period)
             {
                 digitalWrite(LEFT_LED, !digitalRead(LEFT_LED));
@@ -420,7 +415,7 @@ main_task(void)
         case LANE_CHANGE_RIGHT:
         {   
             digitalWrite(10, HIGH);
-            static u32 ts_prev = 0;
+            static unsigned long ts_prev = 0;
             if (millis() - ts_prev >= 100)
             {
                 if (cycles_right < 3)
@@ -451,10 +446,10 @@ main_task(void)
         break;
         case NORMAL_RIGHT:
         {      
-            static u32 ts_prev = 0;
-            u16 adc_result = analogRead(POTENTIOMETER);
-            u16 frequency = 1UL + (10UL - 1UL) * (adc_result * 1UL) / (MAX_ANALOG * 1UL);
-            u16 period = 1000 / 2 / frequency;
+            static unsigned long ts_prev = 0;
+            unsigned int adc_result = analogRead(POTENTIOMETER);
+            unsigned int frequency = 1UL + (10UL - 1UL) * (adc_result * 1UL) / (MAX_ANALOG * 1UL);
+            unsigned int period = 1000 / 2 / frequency;
             if (millis() - ts_prev >= period)
             {
                 digitalWrite(RIGHT_LED, !digitalRead(RIGHT_LED));
@@ -474,7 +469,7 @@ main_task(void)
                 digitalWrite(LEFT_LED, LOW);
                 digitalWrite(RIGHT_LED, LOW);
             }
-            static u32 ts_prev = 0;
+            static unsigned long ts_prev = 0;
             if (millis() - ts_prev >= 500)
             {
                 digitalWrite(LEFT_LED, !digitalRead(LEFT_LED));
@@ -491,7 +486,7 @@ main_task(void)
         }
         break;
 
-        default:
+        default:    
             break;
     }
     if (mode != LANE_CHANGE_LEFT)
