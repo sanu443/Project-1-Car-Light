@@ -53,19 +53,19 @@ void setup(void)
     pinMode(13, OUTPUT);
 }
 
-typedef enum
+enum btn_test
 {
     TEST_PRESS = 0,
     TEST_RELEASE
-} btn_test;
+};
 
-typedef enum
+enum btn_state
 {
     PRESSED = 0,
     NOT_PRESSED,
-} btn_state;
+};
 
-typedef enum
+enum light_mode 
 {
     NORMAL_LEFT = 0,
     LANE_CHANGE_LEFT,
@@ -73,7 +73,7 @@ typedef enum
     LANE_CHANGE_RIGHT,
     HAZARD,
     OFF,
-} light_mode;
+};
 
 unsigned char 
 detect_press(unsigned char btn)
@@ -111,7 +111,7 @@ detect_release(unsigned char btn)
 }
 
 // unsigned char  
-// buttons_status(btn_test mode)
+// buttons_status(enum btn_test mode)
 // {  
 //     static unsigned long ts_prev = 0;
 //     static unsigned char state_prev = 0;
@@ -130,14 +130,14 @@ detect_release(unsigned char btn)
 // }
 
 unsigned char
-btn_status(unsigned char btn, btn_test mode) 
+btn_status(unsigned char btn, enum btn_test mode) 
 {      
     return (mode == TEST_PRESS) ? detect_press(btn) : detect_release(btn);
 }
 
 void 
 print(LiquidCrystal* lcd, light_mode mode,
-     btn_state left, btn_state right, btn_state hazard)
+     enum btn_state left, enum btn_state right, enum btn_state hazard)
 {   
 
     //static char last_lcd_state[32] = {0};
@@ -207,11 +207,11 @@ main_task(void)
     }
     static unsigned long last_press[3] = {0};
     static unsigned long last_release[3] = {0};
-    static btn_state left_btn = NOT_PRESSED;
-    static btn_state right_btn = NOT_PRESSED;
-    static btn_state hazard_btn = NOT_PRESSED;
-    static light_mode mode = OFF;
-    static light_mode last_mode = OFF;
+    static enum btn_state left_btn = NOT_PRESSED;
+    static enum btn_state right_btn = NOT_PRESSED;
+    static enum btn_state hazard_btn = NOT_PRESSED;
+    static enum light_mode mode = OFF;
+    static enum light_mode last_mode = OFF;
     static unsigned char cycles_left = 0;
     static unsigned char cycles_right = 0;
     static unsigned char count_left = 0;
@@ -486,7 +486,7 @@ main_task(void)
         }
         break;
 
-        default:    
+        default:
             break;
     }
     if (mode != LANE_CHANGE_LEFT)
@@ -509,4 +509,3 @@ main_task(void)
     }
     last_mode = mode;
 }
-    
