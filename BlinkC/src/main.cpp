@@ -26,6 +26,8 @@
 #define RIGHT_BTN_PIN PD1
 #define HAZARD_BTN_PIN PD2
 
+
+
 #define RS 3    
 #define EN 4
 #define D4 5
@@ -53,27 +55,16 @@ void setup(void)
     pinMode(13, OUTPUT);
 }
 
-enum btn_test
-{
-    TEST_PRESS = 0,
-    TEST_RELEASE
-};
-
-enum btn_state
-{
-    PRESSED = 0,
-    NOT_PRESSED,
-};
-
-enum light_mode 
-{
-    NORMAL_LEFT = 0,
-    LANE_CHANGE_LEFT,
-    NORMAL_RIGHT,
-    LANE_CHANGE_RIGHT,
-    HAZARD,
-    OFF,
-};
+#define    TEST_PRESS 0
+#define    TEST_RELEASE 1
+#define    PRESSED 0
+#define    NOT_PRESSED 1
+#define    NORMAL_LEFT 0
+#define    LANE_CHANGE_LEFT 1
+#define    NORMAL_RIGHT 2
+#define    LANE_CHANGE_RIGHT 3
+#define    HAZARD 4
+#define    OFF 5
 
 unsigned char 
 detect_press(unsigned char btn)
@@ -106,12 +97,12 @@ detect_release(unsigned char btn)
         result_release = state_prev[btn] & ~state_now & 0b111;
         state_prev[btn] = state_now;
         ts_prev[btn] = millis();
-    }
+    }   
     return (result_release >> btn) & 1;
 }
 
 // unsigned char  
-// buttons_status(enum btn_test mode)
+// buttons_status( unsigned char mode)
 // {  
 //     static unsigned long ts_prev = 0;
 //     static unsigned char state_prev = 0;
@@ -130,14 +121,14 @@ detect_release(unsigned char btn)
 // }
 
 unsigned char
-btn_status(unsigned char btn, enum btn_test mode) 
+btn_status(unsigned char btn,  unsigned char mode) 
 {      
     return (mode == TEST_PRESS) ? detect_press(btn) : detect_release(btn);
 }
 
 void 
-print(LiquidCrystal* lcd, light_mode mode,
-     enum btn_state left, enum btn_state right, enum btn_state hazard)
+print(LiquidCrystal* lcd, unsigned char mode,
+      unsigned char left,  unsigned char right,  unsigned char hazard)
 {   
 
     //static char last_lcd_state[32] = {0};
@@ -207,11 +198,11 @@ main_task(void)
     }
     static unsigned long last_press[3] = {0};
     static unsigned long last_release[3] = {0};
-    static enum btn_state left_btn = NOT_PRESSED;
-    static enum btn_state right_btn = NOT_PRESSED;
-    static enum btn_state hazard_btn = NOT_PRESSED;
-    static enum light_mode mode = OFF;
-    static enum light_mode last_mode = OFF;
+    static  unsigned char left_btn = NOT_PRESSED;
+    static  unsigned char right_btn = NOT_PRESSED;
+    static  unsigned char hazard_btn = NOT_PRESSED;
+    static  unsigned char mode = OFF;
+    static  unsigned char last_mode = OFF;
     static unsigned char cycles_left = 0;
     static unsigned char cycles_right = 0;
     static unsigned char count_left = 0;
