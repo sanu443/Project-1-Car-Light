@@ -9,14 +9,14 @@
 #include <LiquidCrystal.h>
 
 
-#define MAX_ANALOG 1023
+#define MAX_ANALOG 1023UL
 #define NR_LEDS 8
 #define TRUE 1
-#define FALSE 0
+#define FALSE 0 
 
 #define LEFT_LED A0
 #define RIGHT_LED A1
-#define POTENTIOMETER A5
+#define POTENTIOMETER A5    
 
 #define LEFT_BTN 0
 #define RIGHT_BTN 1
@@ -37,6 +37,7 @@
 typedef unsigned long long u64;
 typedef unsigned char u8;
 typedef u8 bool_;
+typedef int i16;
 
 void setup(void)
 {
@@ -58,7 +59,6 @@ void setup(void)
     pinMode(13, OUTPUT);
     pinMode(A3, OUTPUT);
     pinMode(A2, OUTPUT);
-    pinMode(A1, OUTPUT);
 }
 
 typedef enum
@@ -75,12 +75,12 @@ typedef enum
 
 typedef enum
 {
-    NORMAL_LEFT = 0,
-    LANE_CHANGE_LEFT,
-    NORMAL_RIGHT,
-    LANE_CHANGE_RIGHT,
-    HAZARD,
-    OFF,
+        NORMAL_LEFT = 0,
+        LANE_CHANGE_LEFT,
+        NORMAL_RIGHT,
+        LANE_CHANGE_RIGHT,
+        HAZARD,
+        OFF,    
 } light_mode;
 
 u8 
@@ -144,17 +144,68 @@ btn_status(u8 btn, btn_test mode)
 }
 
 void 
+my_strcpy (const char* src, char* dest)
+{
+    while (*src != '\0')
+    {
+        *dest++ = *src++;
+    }
+    *dest = '\0';
+}
+
+u16
+my_strlen (const char* str)
+{   
+    const char* base = str;
+    while (*str++ != '\0');
+    return str - base;
+}
+
+void
+my_strcat(const char* suffix, char* prefix)
+{
+    my_strcpy(suffix, prefix + strlen(prefix));
+}
+
+i16
+my_strcmp(const char* left, const char* right)
+{
+    while (*left != '\0' && *right != 0)
+    {
+        if (*left > *right)
+        {
+            return 1;
+        }
+        if (*left < *right)
+        {
+            return -1;
+        }
+        left++;
+        right++;
+    }
+    if (*left == '\0' && *right == '\0')
+    {
+        return 0;
+    }
+    if (*left == '\0')
+        return -1;
+    return 1;
+}
+
+
+void 
 print(LiquidCrystal* lcd, light_mode mode,
      btn_state left, btn_state right, btn_state hazard)
 {   
 
     //static char last_lcd_state[32] = {0};
+    static char last_buffer[32] = {'\0'};
     const char* mode_lut[] = 
     {
         "NORMAL_LEFT",
-        "LANE_CHANGE_LEFT",
+        "LANE_CHANGE_L",     
         "NORMAL_RIGHT",
-        "LANE_CHANGE_RIGHT",
+        "LANE_CHANGE_R",
         "HAZARD",
         "OFF"
     };
@@ -165,23 +216,32 @@ print(LiquidCrystal* lcd, light_mode mode,
         ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
         ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
     };
-    lcd->setCursor(0,0);
+    char buffer[33];
+    strcpy(all_spaces, buffer);
+    const char* mode_text = mode_lut[mode];
+    strcpy(mode_text, buffer);
+    buffer[my_strlen(mode_text)] = ' ';
+    char btn_text[20] = {'\0'}; 
     // lcd->print(all_spaces);
-    lcd->clear();
-    lcd->setCursor(0,0);
-    lcd->print(mode_lut[mode]);
-    lcd->setCursor(0, 1);
     if (left == PRESSED)
     {
-        lcd->print("LEFT ");
+        strcat("LEFT ", btn_text);
     }
     if (right == PRESSED)
     {
-        lcd->print("RIGHT ");
+         strcat("RIGHT ", btn_text);
     }
     if (hazard == PRESSED)
     {
-        lcd->print("HAZ ");
+         strcat("HAZ ", btn_text);
+    }
+    strcpy(btn_text, buffer + 16);
+    buffer[16 + strlen(btn_text)] = ' ';
+    if (my_strcmp(buffer, last_buffer) != 0)
+    {
+        lcd->print(buffer);
+        lcd->setCursor(0,0);
+        strcpy(buffer, last_buffer);
     }
 }
 
@@ -224,23 +284,6 @@ main_task(void)
     static u8 count_right = 0;
     //bool_ can_verride = TRUE;
 
-    //START DEBUG
-
-    //CURRENT MODE
-    digitalWrite(7, mode % 2);
-
-    digitalWrite(8, (mode / 2) % 2);
-
-    digitalWrite(9, (mode / 4) % 2);
-
-    //CURRENT BUTTONS PRESSED
-
-    digitalWrite(A3, hazard_btn == PRESSED);
-    digitalWrite(A2,  right_btn == PRESSED);
-    digitalWrite(A1, left_btn == PRESSED);
-
-    //END DEBUG
-
     print(&lcd, mode, left_btn, right_btn, hazard_btn);
 
     if (mode == OFF) 
@@ -252,12 +295,25 @@ main_task(void)
         digitalWrite(11, LOW);
     }
 
+
+    //DEBUG
+    //BUTTONS
+    digitalWrite(6, left_btn == PRESSED);
+    digitalWrite(7, right_btn == PRESSED);
+    digitalWrite(8, hazard_btn == PRESSED);
+    //MODE
+    digitalWrite(A2, mode % 2);
+    digitalWrite(A3, (mode / 2) % 2);
+    digitalWrite(9, (mode / 4) % 2);
+    //END DEBUG
+    
+
     switch (left_btn)
     {
         case NOT_PRESSED:
         {   
-            digitalWrite(8, HIGH);
-            digitalWrite(9, LOW);
+            // digitalWrite(8, HIGH);
+            // digitalWrite(9, LOW);
             if (btn_status(LEFT_BTN, TEST_PRESS) && last_mode != HAZARD)
             {
                 left_btn = PRESSED;
@@ -267,11 +323,11 @@ main_task(void)
         break;  
         case PRESSED:
         {
-            digitalWrite(8, LOW);
-            digitalWrite(9, HIGH);
+            // digitalWrite(8, LOW);
+            // digitalWrite(9, HIGH);
             if (millis() - last_press[LEFT_LED] >= 500 && last_mode != HAZARD) 
             {   
-                digitalWrite(7, HIGH);
+                //digitalWrite(7, HIGH);
                 mode = NORMAL_LEFT;
             }
              //digitalWrite(10, LOW);
@@ -299,8 +355,8 @@ main_task(void)
     {
         case NOT_PRESSED:
         {   
-            digitalWrite(8, HIGH);
-            digitalWrite(9, LOW);
+            //digitalWrite(8, HIGH);
+            //digitalWrite(9, LOW);
             if (btn_status(RIGHT_BTN, TEST_PRESS))
             {
                 right_btn = PRESSED;
@@ -310,11 +366,11 @@ main_task(void)
         break;  
         case PRESSED:
         {
-            digitalWrite(8, LOW);
-            digitalWrite(9, HIGH);
+            //digitalWrite(8, LOW);
+            //digitalWrite(9, HIGH);
             if (millis() - last_press[RIGHT_LED] >= 500) 
             {   
-                digitalWrite(7, HIGH);
+                //digitalWrite(7, HIGH);
                 if (last_mode != NORMAL_LEFT && last_mode != HAZARD)
                 {
                     mode = NORMAL_RIGHT;
@@ -382,29 +438,26 @@ main_task(void)
     {
         case LANE_CHANGE_LEFT:
         {   
-            digitalWrite(10, HIGH);
+            //digitalWrite(10, HIGH);
             static u32 ts_prev = 0;
             if (millis() - ts_prev >= 100)
             {
-                if (cycles_left < 3)
+                if (count_left > 2)
                 {
-                    if (count_left > 2)
-                    {
-                        digitalWrite(LEFT_LED, LOW);
-                    }
-                    else
-                    {
-                        digitalWrite(LEFT_LED, HIGH);
-                    }
-                    if (count_left++ == 10)
-                    {
-                        count_left = 0;
-                        cycles_left++;
-                    }
+                    digitalWrite(LEFT_LED, LOW);
+                }
+                else
+                {
+                    digitalWrite(LEFT_LED, HIGH);
+                }
+                if (count_left++ == 10)
+                {
+                    count_left = 0;
+                    cycles_left++;
                 }
                 ts_prev = millis();
             }
-            if (cycles_left == 3 && last_mode != HAZARD) 
+            if (cycles_left == 100 && last_mode != HAZARD) 
             {
                 cycles_left = 0;
                 mode = OFF;
@@ -416,9 +469,11 @@ main_task(void)
             
             static u32 ts_prev = 0;
             u16 adc_result = analogRead(POTENTIOMETER);
-            u16 frequency = 1UL + (10UL - 1UL) * (adc_result * 1UL) / (MAX_ANALOG * 1UL);
-            u16 period = 1000 / 2 / frequency;
-            if (millis() - ts_prev >= period)
+            //deduction of the toggle period:
+            // frequency = 1UL + (10UL - 1UL) * (adc_result * 1UL)) / (MAX_ANALOG * 1UL);
+            // toggle_period = 1000 / (2 * frequency);
+            u32 toggle_period = (500UL * MAX_ANALOG) / (MAX_ANALOG + (10UL - 1UL) * (adc_result * 1UL));
+            if (millis() - ts_prev >= toggle_period)
             {
                 digitalWrite(LEFT_LED, !digitalRead(LEFT_LED));
                 ts_prev = millis();
@@ -466,9 +521,10 @@ main_task(void)
         {      
             static u32 ts_prev = 0;
             u16 adc_result = analogRead(POTENTIOMETER);
-            u16 frequency = 1UL + (10UL - 1UL) * (adc_result * 1UL) / (MAX_ANALOG * 1UL);
-            u16 period = 1000 / 2 / frequency;
-            if (millis() - ts_prev >= period)
+            //u16 frequency = 1UL + (10UL - 1UL) * (adc_result * 1UL) / (MAX_ANALOG * 1UL);
+            //u16 toggle_period = 1000 / (2 * frequency);
+            u32 toggle_period = (500UL * MAX_ANALOG) / (MAX_ANALOG + (10UL - 1UL) * (adc_result * 1UL));
+            if (millis() - ts_prev >= toggle_period)
             {
                 digitalWrite(RIGHT_LED, !digitalRead(RIGHT_LED));
                 ts_prev = millis();
@@ -505,7 +561,7 @@ main_task(void)
         break;
 
         default:
-            digitalWrite(9, HIGH);
+            break;
     }
     if (mode != LANE_CHANGE_LEFT)
     {

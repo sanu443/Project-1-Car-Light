@@ -1,3 +1,4 @@
+//VARIANTA DINAINTE DE REFACTORING MULT MAI BUNA PENTRU RAM
 // DEBUG PORTS:
 // 11 - imi intra pe un mod neimplementat in switch
 // 9 - right button e pe NOT_PRESSED
@@ -9,14 +10,14 @@
 #include <LiquidCrystal.h>
 
 
-#define MAX_ANALOG 1023
+#define MAX_ANALOG 1023UL
 #define NR_LEDS 8
 #define TRUE 1
-#define FALSE 0
+#define FALSE 0 
 
 #define LEFT_LED A0
 #define RIGHT_LED A1
-#define POTENTIOMETER A5
+#define POTENTIOMETER A5    
 
 #define LEFT_BTN 0
 #define RIGHT_BTN 1
@@ -37,6 +38,7 @@
 typedef unsigned long long u64;
 typedef unsigned char u8;
 typedef u8 bool_;
+typedef int i16;
 
 void setup(void)
 {
@@ -58,7 +60,6 @@ void setup(void)
     pinMode(13, OUTPUT);
     pinMode(A3, OUTPUT);
     pinMode(A2, OUTPUT);
-    pinMode(A1, OUTPUT);
 }
 
 typedef enum
@@ -68,9 +69,9 @@ typedef enum
 } btn_test;
 
 typedef enum
-{
-    PRESSED = 0,
-    NOT_PRESSED,
+{   
+    NOT_PRESSED = 0,
+    PRESSED
 } btn_state;
 
 typedef enum
@@ -80,7 +81,7 @@ typedef enum
     NORMAL_RIGHT,
     LANE_CHANGE_RIGHT,
     HAZARD,
-    OFF,
+    OFF,    
 } light_mode;
 
 u8 
@@ -88,7 +89,7 @@ detect_press(u8 btn)
 {   
     static u32 ts_prev[3] = {0};
     static u8 state_prev[3] = {0};
-    const u8 DEBOUNCE_DELAY = 20; //CHANGE IMMEDIATELY   
+    const u8 DEBOUNCE_DELAY = 20; //CHANGE TO OLD DEBOUNCE IMMEDIATELY   
     u8 result_press = 0;
     if (millis() - ts_prev[btn] >= DEBOUNCE_DELAY)
     {
@@ -101,12 +102,12 @@ detect_press(u8 btn)
 }
 
 
-u8 
+u8  
 detect_release(u8 btn)
 {   
     static u32 ts_prev[3] = {0};
     static u8 state_prev[3] = {0};
-    const u8 DEBOUNCE_DELAY = 20; //CHANGE IMMEDIATELY   
+    const u8 DEBOUNCE_DELAY = 20; //CHANGE TO OLD DEBOUNCE IMMEDIATELY   
     u8 result_release = 0;
     if (millis() - ts_prev[btn] >= DEBOUNCE_DELAY)
     {
@@ -144,45 +145,164 @@ btn_status(u8 btn, btn_test mode)
 }
 
 void 
+my_strcpy (const char* src, char* dest)
+{   
+    strcpy(dest, src);
+    return;
+    while (*src != '\0')
+    {
+        *dest++ = *src++;
+    }
+    *dest = '\0';
+}
+
+u16
+my_strlen (const char* str)
+{   
+    return strlen(str);
+    const char* base = str;
+    while (*str++ != '\0');
+    return str - base;
+}
+
+void
+my_strcat(const char* suffix, char* prefix)
+{   
+    strcat(prefix, suffix);
+    return;
+    my_strcpy(suffix, prefix + strlen(prefix));
+}
+
+i16
+my_strcmp(const char* left, const char* right)
+{   
+    return strcmp(left, right);
+    while (*left != '\0' && *right != 0)
+    {
+        if (*left > *right)
+        {
+            return 1;
+        }
+        if (*left < *right)
+        {
+            return -1;
+        }
+        left++;
+        right++;
+    }
+    if (*left == '\0' && *right == '\0')
+    {
+        return 0;
+    }
+    if (*left == '\0')
+    {
+        return -1;
+    }
+    return 1;
+}
+
+void 
 print(LiquidCrystal* lcd, light_mode mode,
      btn_state left, btn_state right, btn_state hazard)
 {   
+    //NU FOLOSESC CLEAR, CASTIG TIMP (dau override si paddez cu spatii)
+    // static char last_lcd_state[32] = {0};
+    // static char last_first_row[32] = {'\0'};
+    // static char last_second_row[32] = {'\0'};
+    static bool_ init_lcd = FALSE;
+    if (!init_lcd)
+    {   
+        init_lcd = TRUE;
+        delay(10);
+        lcd->begin(16, 2);
+        delay(10);
+        lcd->clear();
+        delay(10);
+        
+    }
+    static light_mode last_mode = (light_mode)0x10; //STARE INVALIDA IMI INTRA PE last_mode != mode
 
-    //static char last_lcd_state[32] = {0};
-    const char* mode_lut[] = 
-    {
-        "NORMAL_LEFT",
-        "LANE_CHANGE_LEFT",
-        "NORMAL_RIGHT",
-        "LANE_CHANGE_RIGHT",
-        "HAZARD",
-        "OFF"
-    };
-    const char all_spaces[] = 
-    {
-        ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-        ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-        ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-        ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-    };
-    lcd->setCursor(0,0);
-    // lcd->print(all_spaces);
-    lcd->clear();
-    lcd->setCursor(0,0);
-    lcd->print(mode_lut[mode]);
-    lcd->setCursor(0, 1);
-    if (left == PRESSED)
-    {
-        lcd->print("LEFT ");
+    if (last_mode != mode)
+    {      
+        last_mode = mode;
+        static const char* mode_lut[] = 
+        {
+            "NORMAL_LEFT  ",
+            "LANE_CHANGE_L",     
+            "NORMAL_RIGHT ",
+            "LANE_CHANGE_R",
+            "HAZARD       ",
+            "OFF          "
+        };
+        lcd->setCursor(0,0);
+        lcd->print(mode_lut[mode]);
     }
-    if (right == PRESSED)
+
+    static u8  last_btn_state  = 0x10; //STARE INVALIDA IMI INTRA PE last_btn_state != btn_state
+    u8 btn_state = (hazard << 2) | (right << 1) | left; 
+    if (last_btn_state != btn_state)
     {
-        lcd->print("RIGHT ");
+        last_btn_state = btn_state;
+        ///HAZARD RIGHT LEFT
+        static const char* btn_state_lut[] =
+        {
+            "              ",
+            "          LEFT",
+            "    RIGHT     ",
+            "    RIGHT LEFT",
+            "HAZ           ",
+            "HAZ       LEFT",
+            "HAZ RIGHT     ",
+            "HAZ RIGHT LEFT"
+        };
+        lcd->setCursor(0,1);
+        lcd->print(btn_state_lut[btn_state]);
     }
-    if (hazard == PRESSED)
-    {
-        lcd->print("HAZ ");
-    }
+
+    // if (btn)
+    // first_row[32] = '\0';
+    // const char* mode_text = mode_lut[mode];
+    // my_strcpy(mode_text, first_row);
+    // first_row[my_strlen(mode_text)] = ' ';
+    // /*
+    // */
+    // char second_row[33];
+    // for (u8 i = 0; i < 32; i++)
+    // {
+    //     second_row[i] = ' ';
+        
+    // }
+    // second_row[32] = '\0';
+    // char btn_text[20] = {'\0'};             
+    // if (left == PRESSED)
+    // {
+    //     my_strcat("LEFT ", btn_tex  t);
+    // }
+    // if (right == PRESSED)
+    // {
+    //      my_strcat("RIGHT ", btn_text);
+    // }
+    // if (hazard == PRESSED)
+    // {
+    //      my_strcat("HAZ ", btn_text);
+    // }
+    // my_strcpy(btn_text, second_row);
+    // second_row[my_strlen(btn_text)] = ' ';
+
+    // if (my_strcmp(first_row, last_first_row) != 0)
+    // {
+    //     lcd->setCursor(0,0);
+    //     lcd->print(first_row);
+    //     my_strcpy(first_row, last_first_row);
+    // }
+
+    // if (my_strcmp(second_row, last_second_row) != 0)
+    // {
+    //     lcd->setCursor(0,1);
+    //     lcd->print(second_row);
+    //     my_strcpy(second_row, last_second_row);
+        
+    // }
 }
 
 
@@ -205,12 +325,12 @@ void
 main_task(void)
 {
     static LiquidCrystal lcd(RS, EN, D4, D5, D6, D7);
-    static u8 init_lcd = 0;
-    if (!init_lcd) 
-    {   
-        init_lcd = 1;
-        lcd.begin(16, 2);
-    }
+    // static u8 init_lcd = 0;
+    // if (!init_lcd) 
+    // {   
+    //     init_lcd = 1;
+    //     lcd.begin(16, 2);
+    // }
     static u32 last_press[3] = {0};
     static u32 last_release[3] = {0};
     static btn_state left_btn = NOT_PRESSED;
@@ -224,23 +344,6 @@ main_task(void)
     static u8 count_right = 0;
     //bool_ can_verride = TRUE;
 
-    //START DEBUG
-
-    //CURRENT MODE
-    digitalWrite(7, mode % 2);
-
-    digitalWrite(8, (mode / 2) % 2);
-
-    digitalWrite(9, (mode / 4) % 2);
-
-    //CURRENT BUTTONS PRESSED
-
-    digitalWrite(A3, hazard_btn == PRESSED);
-    digitalWrite(A2,  right_btn == PRESSED);
-    digitalWrite(A1, left_btn == PRESSED);
-
-    //END DEBUG
-
     print(&lcd, mode, left_btn, right_btn, hazard_btn);
 
     if (mode == OFF) 
@@ -252,13 +355,25 @@ main_task(void)
         digitalWrite(11, LOW);
     }
 
-    switch (left_btn)
+
+    //DEBUG
+    //BUTTONS
+    digitalWrite(6, left_btn == PRESSED);
+    digitalWrite(7, right_btn == PRESSED);
+    digitalWrite(8, hazard_btn == PRESSED);
+    //MODE
+    digitalWrite(A2, mode % 2);
+    digitalWrite(A3, (mode / 2) % 2);
+    digitalWrite(9, (mode / 4) % 2);
+    //END DEBUG
+    
+    switch(left_btn)
     {
         case NOT_PRESSED:
         {   
-            digitalWrite(8, HIGH);
-            digitalWrite(9, LOW);
-            if (btn_status(LEFT_BTN, TEST_PRESS) && last_mode != HAZARD)
+            //digitalWrite(8, HIGH);
+            //digitalWrite(9, LOW);
+            if (btn_status(LEFT_BTN, TEST_PRESS)  && last_mode != HAZARD)
             {
                 left_btn = PRESSED;
                 last_press[LEFT_LED]= millis();
@@ -267,12 +382,15 @@ main_task(void)
         break;  
         case PRESSED:
         {
-            digitalWrite(8, LOW);
-            digitalWrite(9, HIGH);
-            if (millis() - last_press[LEFT_LED] >= 500 && last_mode != HAZARD) 
+            //digitalWrite(8, LOW);
+            //digitalWrite(9, HIGH);
+            if (millis() - last_press[LEFT_LED] >= 500) 
             {   
-                digitalWrite(7, HIGH);
-                mode = NORMAL_LEFT;
+                //digitalWrite(7, HIGH);
+                if (last_mode != NORMAL_LEFT && last_mode != HAZARD)
+                {
+                    mode = NORMAL_LEFT;
+                } 
             }
              //digitalWrite(10, LOW);
             if (btn_status(LEFT_BTN, TEST_RELEASE))
@@ -280,9 +398,9 @@ main_task(void)
                 //digitalWrite(6, HIGH);
                 left_btn = NOT_PRESSED;
                 if (millis() - last_press[LEFT_LED] < 500)
-                {
-                    if (last_mode != NORMAL_LEFT && last_mode != NORMAL_RIGHT && last_mode != HAZARD)
-                    {   
+                {   
+                    if (last_mode != NORMAL_LEFT && last_mode != NORMAL_RIGHT && last_mode !=HAZARD)
+                    {
                         cycles_left = 0;
                         count_left = 0;
                         mode = LANE_CHANGE_LEFT;
@@ -291,17 +409,16 @@ main_task(void)
                 last_release[LEFT_LED] = millis();
             }
         }
-        break;
+         break;
     }
-    
 
    switch(right_btn)
     {
         case NOT_PRESSED:
         {   
-            digitalWrite(8, HIGH);
-            digitalWrite(9, LOW);
-            if (btn_status(RIGHT_BTN, TEST_PRESS))
+            //digitalWrite(8, HIGH);
+            //digitalWrite(9, LOW);
+            if (btn_status(RIGHT_BTN, TEST_PRESS)  && last_mode != HAZARD)
             {
                 right_btn = PRESSED;
                 last_press[RIGHT_LED]= millis();
@@ -310,11 +427,11 @@ main_task(void)
         break;  
         case PRESSED:
         {
-            digitalWrite(8, LOW);
-            digitalWrite(9, HIGH);
+            //digitalWrite(8, LOW);
+            //digitalWrite(9, HIGH);
             if (millis() - last_press[RIGHT_LED] >= 500) 
             {   
-                digitalWrite(7, HIGH);
+                //digitalWrite(7, HIGH);
                 if (last_mode != NORMAL_LEFT && last_mode != HAZARD)
                 {
                     mode = NORMAL_RIGHT;
@@ -382,25 +499,22 @@ main_task(void)
     {
         case LANE_CHANGE_LEFT:
         {   
-            digitalWrite(10, HIGH);
+            //digitalWrite(10, HIGH);
             static u32 ts_prev = 0;
             if (millis() - ts_prev >= 100)
             {
-                if (cycles_left < 3)
+                if (count_left > 2)
                 {
-                    if (count_left > 2)
-                    {
-                        digitalWrite(LEFT_LED, LOW);
-                    }
-                    else
-                    {
-                        digitalWrite(LEFT_LED, HIGH);
-                    }
-                    if (count_left++ == 10)
-                    {
-                        count_left = 0;
-                        cycles_left++;
-                    }
+                    digitalWrite(LEFT_LED, LOW);
+                }
+                else
+                {
+                    digitalWrite(LEFT_LED, HIGH);
+                }
+                if (count_left++ == 10)
+                {
+                    count_left = 0;
+                    cycles_left++;
                 }
                 ts_prev = millis();
             }
@@ -416,9 +530,11 @@ main_task(void)
             
             static u32 ts_prev = 0;
             u16 adc_result = analogRead(POTENTIOMETER);
-            u16 frequency = 1UL + (10UL - 1UL) * (adc_result * 1UL) / (MAX_ANALOG * 1UL);
-            u16 period = 1000 / 2 / frequency;
-            if (millis() - ts_prev >= period)
+            //deduction of the toggle period:
+            // frequency = 1UL + (10UL - 1UL) * (adc_result * 1UL)) / (MAX_ANALOG * 1UL);
+            // toggle_period = 1000 / (2 * frequency);
+            u32 toggle_period = (500UL * MAX_ANALOG) / (MAX_ANALOG + (10UL - 1UL) * (adc_result * 1UL));
+            if (millis() - ts_prev >= toggle_period)
             {
                 digitalWrite(LEFT_LED, !digitalRead(LEFT_LED));
                 ts_prev = millis();
@@ -466,9 +582,10 @@ main_task(void)
         {      
             static u32 ts_prev = 0;
             u16 adc_result = analogRead(POTENTIOMETER);
-            u16 frequency = 1UL + (10UL - 1UL) * (adc_result * 1UL) / (MAX_ANALOG * 1UL);
-            u16 period = 1000 / 2 / frequency;
-            if (millis() - ts_prev >= period)
+            //u16 frequency = 1UL + (10UL - 1UL) * (adc_result * 1UL) / (MAX_ANALOG * 1UL);
+            //u16 toggle_period = 1000 / (2 * frequency);
+            u32 toggle_period = (500UL * MAX_ANALOG) / (MAX_ANALOG + (10UL - 1UL) * (adc_result * 1UL));
+            if (millis() - ts_prev >= toggle_period)
             {
                 digitalWrite(RIGHT_LED, !digitalRead(RIGHT_LED));
                 ts_prev = millis();
@@ -498,14 +615,14 @@ main_task(void)
         break;
 
         case OFF:
-        {
+        {   
             digitalWrite(LEFT_LED, LOW);
             digitalWrite(RIGHT_LED, LOW);
         }
         break;
 
         default:
-            digitalWrite(9, HIGH);
+            break;
     }
     if (mode != LANE_CHANGE_LEFT)
     {
