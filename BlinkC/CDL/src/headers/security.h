@@ -1,0 +1,1 @@
+void security_check(void);
