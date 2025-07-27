@@ -1,0 +1,8 @@
+{
+    "C_Cpp.default.compilerPath": "C:/Users/sanu03/.platformio/packages/toolchain-atmelavr/bin/avr-gcc.exe",
+    "files.associations": {
+        "*.c": "c",
+        "*.cpp": "cpp",
+        "*.txt": "cpp"
+    }
+}
